@@ -1,0 +1,87 @@
+local UserInputService = game:GetService("UserInputService")
+local Camera = game.Workspace.CurrentCamera
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Mouse = LocalPlayer:GetMouse()
+
+local isLockedOn = false
+local targetPlayer = nil
+
+local function lockCameraOnPlayer()
+    local closestPlayer = nil
+    local closestDistance = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local attachPart = character:FindFirstChild(redhood_settings.Part)
+            if attachPart then
+                local screenPosition, onScreen = Camera:WorldToScreenPoint(attachPart.Position)
+                if onScreen then
+                    local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+    end
+
+    if closestPlayer then
+        targetPlayer = closestPlayer
+        isLockedOn = true
+    end
+end
+
+local function followTargetPlayer()
+    if targetPlayer and targetPlayer.Character then
+        local character = targetPlayer.Character
+        local attachPart = character:FindFirstChild(redhood_settings.Part)
+        if attachPart then
+            local velocity = attachPart.AssemblyLinearVelocity
+
+            local predictedPosition
+            if redhood_settings.Method == "multiplication" then
+                predictedPosition = attachPart.Position + Vector3.new(
+                    velocity.X * redhood_settings.PredictionX,
+                    velocity.Y * redhood_settings.PredictionY,
+                    0
+                )
+            elseif redhood_settings.Method == "division" then
+                predictedPosition = attachPart.Position + Vector3.new(
+                    velocity.X / redhood_settings.PredictionX,
+                    velocity.Y / redhood_settings.PredictionY,
+                    0
+                )
+            end
+
+            if redhood_settings.Smoothing then
+                local currentCFrame = Camera.CFrame
+                local targetCFrame = CFrame.new(currentCFrame.Position, predictedPosition)
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, redhood_settings.smoothingSpeed)
+            else
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
+            end
+        end
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, isProcessed)
+    if not isProcessed and input.KeyCode == redhood_settings.Keybind then
+        if isLockedOn then
+            isLockedOn = false
+            targetPlayer = nil
+            Camera.CameraSubject = LocalPlayer.Character.Humanoid
+        else
+            lockCameraOnPlayer()
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if isLockedOn then
+        followTargetPlayer()
+    end
+end)
