@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local Mouse = LocalPlayer:GetMouse()
+local redhood_settings = _G.redhood_settings
 
 local isLockedOn = false
 local targetPlayer = nil
